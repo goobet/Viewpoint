@@ -1025,6 +1025,10 @@ module Viewpoint::EWS::SOAP
       nbuild[NS_EWS_TYPES].IsResponseRequested(response_requested)
     end
 
+    def is_read_receipt_requested!(read_receipt_requested)
+      nbuild[NS_EWS_TYPES].IsReadReceiptRequested(read_receipt_requested)
+    end
+
     def reminder_is_set!(reminder)
       nbuild[NS_EWS_TYPES].ReminderIsSet reminder
     end

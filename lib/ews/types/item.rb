@@ -44,7 +44,8 @@ module Viewpoint::EWS::Types
       conversation_index:     [:conversation_index, :text],
       conversation_topic:     [:conversation_topic, :text],
       body_type: [:body, :attribs, :body_type],
-      body: [:body, :text]
+      body: [:body, :text],
+      is_read_receipt_requested?: [:is_read_receipt_requested, :text]
     }
 
     ITEM_KEY_TYPES = {
@@ -58,6 +59,7 @@ module Viewpoint::EWS::Types
       is_draft?:          ->(str){str.downcase == 'true'},
       is_submitted?:      ->(str){str.downcase == 'true'},
       categories:         ->(obj){obj.collect{|s| s[:string][:text]}},
+      is_read_receipt_requested?: ->(str){str.downcase == 'true'},
       internet_message_headers: ->(obj){obj.collect{|h|
           {h[:internet_message_header][:attribs][:header_name] =>
             h[:internet_message_header][:text]} } },
@@ -73,6 +75,7 @@ module Viewpoint::EWS::Types
       :draft?       => :is_draft?,
       :submitted?   => :is_submitted?,
       :associated?  => :is_associated?,
+      :read_receipt_requested? => :is_read_receipt_requested?
     }
 
     attr_reader :ews_item, :parent
@@ -88,6 +91,27 @@ module Viewpoint::EWS::Types
       @new_file_attachments = []
       @new_item_attachments = []
       @new_inline_attachments = []
+    end
+
+    def update_is_read_receipt_requested(read)
+      field = :is_read_receipt_requested
+      opts = {item_changes:
+        [
+          { item_id: {id: id, change_key: change_key},
+            updates: [
+              {set_item_field: {field_uRI: {field_uRI: FIELD_URIS[field][:text]},
+                message: {sub_elements: [{field => {text: read}}]}}}
+            ]
+          }
+        ],
+        message_disposition: 'SaveOnly'
+      }
+      resp = ews.update_item({conflict_resolution: 'AutoResolve'}.merge(opts))
+      rmsg = resp.response_messages[0]
+      unless rmsg.success?
+        raise EwsError, "#{rmsg.response_code}: #{rmsg.message_text}"
+      end
+      true
     end
 
     # Specify a body_type to fetch this item with if it hasn't already been fetched.
